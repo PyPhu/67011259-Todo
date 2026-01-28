@@ -19,6 +19,24 @@
         <div class="form-box" id="register-form">
             <form action="">
                 <h2>Register</h2>
+                <div class="avatar-wrapper">
+                    <img
+                        src="default-avatar.png"
+                        id="avatarPreview"
+                        class="avatar"
+                        onclick="document.getElementById('avatarInput').click()"
+                    >
+                    <input
+                        type="file"
+                        id="avatarInput"
+                        name="profile"
+                        accept="image/*"
+                        hidden
+                        onchange="previewAvatar(event)"
+                        required
+                    >
+                </div>
+
                 <input type="text" name="name" placeholder="Name" required>
                 <input type="email" name="email" placeholder="Email" required>
                 <input type="password" name="password" placeholder="Password" required>
