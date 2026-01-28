@@ -26,7 +26,7 @@ function App() {
 
     return (
         <div className="App">
-            <h1>Full Stack Todo App</h1>
+            
             {/* Conditional rendering based on login status */}
             {currentUser ? (
                 <TodoList username={currentUser} onLogout={handleLogout} />

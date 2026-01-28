@@ -1,139 +1,94 @@
-// frontend/src/components/TodoList.js
 import React, { useState, useEffect } from 'react';
+import axios from 'axios';
+import logo from '../logo.png';
 
-const API_URL = `${process.env.REACT_APP_API_URL}/api`;
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001';
 
 function TodoList({ username, onLogout }) {
     const [todos, setTodos] = useState([]);
     const [newTask, setNewTask] = useState('');
 
+    // โหลดข้อมูลเมื่อ username เปลี่ยน
     useEffect(() => {
-        fetchTodos();
-    }, [username]); // Refetch when username changes (e.g., after login)
+        if(username) fetchTodos();
+    }, [username]);
 
-    // 1. READ: Fetch all todos for the current user
     const fetchTodos = async () => {
         try {
-            const response = await fetch(`${API_URL}/todos/${username}`);
-            
-            if (!response.ok) {
-                console.error('Failed to fetch todos:', response.statusText);
-                return;
-            }
-
-            const data = await response.json();
-            setTodos(data);
+            const res = await axios.get(`${API_URL}/api/todos/${username}`);
+            setTodos(res.data);
         } catch (err) {
-            console.error('Error fetching todos:', err);
+            console.error("Error fetching todos:", err);
         }
     };
 
-    // 2. CREATE: Add a new todo
     const handleAddTodo = async (e) => {
         e.preventDefault();
         if (!newTask.trim()) return;
-
         try {
-            const response = await fetch(`${API_URL}/todos`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username, task: newTask }),
-            });
-
-            if (!response.ok) {
-                console.error('Failed to add todo:', response.statusText);
-                return;
-            }
-
-            const newTodo = await response.json();
-            // Add the new item to the beginning of the list
-            setTodos([newTodo, ...todos]); 
+            // ส่ง username ไปด้วย Backend ถึงจะยอมรับ
+            const res = await axios.post(`${API_URL}/api/todos`, { username, task: newTask });
+            setTodos([...todos, res.data]); // เพิ่มรายการใหม่ต่อท้าย
             setNewTask('');
         } catch (err) {
-            console.error('Error adding todo:', err);
+            console.error("Error adding todo:", err);
+            alert("Cannot add task. See console for details.");
         }
     };
 
-    // 3. UPDATE: Toggle the 'done' status
-    const handleToggleDone = async (id, currentDoneStatus) => {
-        const newDoneStatus = !currentDoneStatus;
-        try {
-            const response = await fetch(`${API_URL}/todos/${id}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ done: newDoneStatus }),
-            });
-
-            if (!response.ok) {
-                console.error('Failed to update todo:', response.statusText);
-                return;
-            }
-
-            // Update the status in the local state immediately
-            setTodos(todos.map(todo => 
-                todo.id === id ? { ...todo, done: newDoneStatus } : todo
-            ));
-        } catch (err) {
-            console.error('Error toggling done status:', err);
-        }
-    };
-
-    // 4. DELETE: Remove a todo item
     const handleDeleteTodo = async (id) => {
+        if(!window.confirm("Delete this task?")) return;
         try {
-            const response = await fetch(`${API_URL}/todos/${id}`, {
-                method: 'DELETE',
-            });
-            
-            if (!response.ok) {
-                 console.error('Failed to delete todo:', response.statusText);
-                return;
-            }
-
-            // Filter out the deleted item from the state
-            setTodos(todos.filter(todo => todo.id !== id));
+            await axios.delete(`${API_URL}/api/todos/${id}`);
+            setTodos(todos.filter(t => t.id !== id));
         } catch (err) {
-            console.error('Error deleting todo:', err);
+            console.error(err);
         }
-    };
-
-    const handleLogout = () => {
-        // Clear storage and trigger state change in App.js
-        localStorage.removeItem('todo_username');
-        onLogout();
     };
 
     return (
-        <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <h2>Todo List for: {username}</h2>
-                <button onClick={handleLogout}>Logout</button>
-            </div>
-            
-            <form onSubmit={handleAddTodo}>
-                <input
-                    type="text"
-                    placeholder="New Task"
-                    value={newTask}
-                    onChange={(e) => setNewTask(e.target.value)}
-                />
-                <button type="submit">Add Task</button>
-            </form>
+        <div className="bg-light min-vh-100">
+            <nav className="navbar navbar-light bg-white shadow-sm mb-4">
+                <div className="container">
+                    <span className="navbar-brand d-flex align-items-center">
+                        <img src={logo} alt="Logo" width="30" className="me-2" />
+                        <span className="fw-bold text-primary">CEi Todo</span>
+                    </span>
+                    <div className="d-flex align-items-center">
+                        <span className="me-3 text-muted d-none d-md-block">User: {username}</span>
+                        <button onClick={onLogout} className="btn btn-outline-danger btn-sm">Logout</button>
+                    </div>
+                </div>
+            </nav>
 
-            <ul>
-                {todos.map(todo => (
-                    <li key={todo.id} style={{ textDecoration: todo.done ? 'line-through' : 'none' }}>
-                        <input
-                            type="checkbox"
-                            checked={!!todo.done} // Convert MySQL's 0/1 to boolean
-                            onChange={() => handleToggleDone(todo.id, todo.done)}
-                        />
-                        {todo.task} 
-                        <small> (Updated: {new Date(todo.updated).toLocaleString()})</small>
-                        <button onClick={() => handleDeleteTodo(todo.id)} style={{ marginLeft: '10px' }}>Delete</button>
-                    </li>
-                ))}
-            </ul>
+            <div className="container" style={{ maxWidth: '600px' }}>
+                <div className="card shadow-sm">
+                    <div className="card-body">
+                        <form onSubmit={handleAddTodo} className="input-group mb-3">
+                            <input 
+                                type="text" 
+                                className="form-control" 
+                                placeholder="Add a new task..." 
+                                value={newTask}
+                                onChange={(e) => setNewTask(e.target.value)}
+                            />
+                            <button className="btn btn-primary" type="submit">Add</button>
+                        </form>
+
+                        <ul className="list-group list-group-flush">
+                            {todos.map(todo => (
+                                <li key={todo.id} className="list-group-item d-flex justify-content-between align-items-center">
+                                    <span>{todo.task}</span>
+                                    <button onClick={() => handleDeleteTodo(todo.id)} className="btn btn-link text-danger p-0">
+                                        <i className="bi bi-trash"></i> Delete
+                                    </button>
+                                </li>
+                            ))}
+                            {todos.length === 0 && <p className="text-center text-muted mt-3">No tasks yet.</p>}
+                        </ul>
+                    </div>
+                </div>
+            </div>
         </div>
     );
 }
